@@ -36,7 +36,7 @@ contract KhuberoToken is ERC20, Pausable, Ownable {
         super._beforeTokenTransfer(from, to, amount);
     }
 
-    function setMerkleRoot(bytes32 root) onlyOwner external {
+    function setMerkleRoot(bytes32 root) external onlyOwner {
         merkleRoot = root;
     }
 

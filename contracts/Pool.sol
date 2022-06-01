@@ -2,9 +2,13 @@
 pragma solidity ^0.8.4;
 
 import "./KhuberoToken.sol";
+import "./WadMath.sol";
 
 contract Pool {
 
+    using WadMath for uint256;
+
+    uint256 public constant WAD = 1e18;
     uint256 public investmentCap;
     uint256 public investmentTub;
     uint256 public exchangeRate;
@@ -33,7 +37,7 @@ contract Pool {
         investmentCap = _investmentCap;
         exchangeRate = _exchangeRate;
         minInvestment = _minInvestment;
-        feePercentage = _feePct;
+        feePercentage = (WAD * _feePct) / 100;
     }
 
     event Received(address, uint);
@@ -48,11 +52,11 @@ contract Pool {
     mapping(address => uint256) public KBRHoldings;
 
     function ethToKBR(uint256 ethSent) public view returns(uint256) {
-        return ethSent/ exchangeRate;
+        return ethSent.wadDivDown(exchangeRate);
     }
 
     function getPlatformFee(uint256 inputKBR) public view returns (uint256 outputKBR, uint256 fee) {
-        fee = (inputKBR*feePercentage)/100;
+        fee = (inputKBR*feePercentage)/WAD;
         outputKBR = inputKBR - fee;
         require(outputKBR<=inputKBR, "invalid output KBR");
     }
@@ -61,9 +65,9 @@ contract Pool {
         return investorsList;
     }
 
-    // function calcShare(address _addr) public view returns (uint256) {
-    //     return (ethInvestments[_addr] * 100) / address(this).balance;
-    // }
+    function calcShare(address _addr) public view returns (uint256) {
+        return (ethInvestments[_addr].wadDivUp(address(this).balance));
+    }
 
     function invest(bytes32[] memory _merkleProof) external payable {
         require(msg.value>minInvestment, "Below Min Investment.");
