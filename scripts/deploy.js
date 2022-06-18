@@ -13,29 +13,25 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
+  const Treasury = "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199";
+  const investmentCap = "10000000000000000000";
+  const exchangerate = "1000000000";
+  const minInvestment = "1000000000000000000";
+  const feePercentage = "2";
+
   // We get the contract to deploy
   const KhuberoToken = await hre.ethers.getContractFactory("KhuberoToken");
-  const khuberoToken = await KhuberoToken.deploy();
+  const khuberoToken = await KhuberoToken.deploy(
+    Treasury,
+    investmentCap,
+    exchangerate,
+    minInvestment,
+    feePercentage
+  );
 
   await khuberoToken.deployed();
 
   console.log("KhuberoToken deployed to:", khuberoToken.address);
-
-  const TREASURY = "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199";
-
-  const Pool = await hre.ethers.getContractFactory("Pool");
-  const pool = await Pool.deploy(
-    TREASURY,
-    khuberoToken.address,
-    "10000000000000000000",
-    "10000",
-    "1000000000000000000",
-    "2"
-  );
-
-  await pool.deployed();
-
-  console.log("Pool deployed to:", pool.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

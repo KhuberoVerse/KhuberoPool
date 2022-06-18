@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import "./WadMath.sol";
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract KhuberoToken is ERC20, Pausable, Ownable {
 
@@ -61,7 +61,7 @@ contract KhuberoToken is ERC20, Pausable, Ownable {
 
     function mint() public payable {
         
-        require(msg.value>minInvestment, "Below Min Investment.");
+        require(msg.value>=minInvestment, "Below Min Investment.");
         require(address(this).balance+msg.value<=investmentCap, "Investment overflow");
         
         uint256 mintedKBR = ethToKBR(msg.value);
