@@ -63,7 +63,11 @@ contract KhuberoToken is ERC20, Pausable, Ownable {
     function mint() public payable {
         
         require(msg.value>=minInvestment, "Below Min Investment.");
-        require(address(this).balance+msg.value<=investmentCap, "Investment overflow");
+    
+
+        require(address(this).balance<=investmentCap, "Investment overflow");
+
+      
         
         uint256 mintedKBR = ethToKBR(msg.value);
 
