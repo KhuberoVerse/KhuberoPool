@@ -47,6 +47,7 @@ contract KhuberoToken is ERC20, Pausable, Ownable {
     event FeeRecieved(uint256 fee, uint256 datetime);
     event KBRReceived(address investor, uint256 kbr, uint256 datetime);
     event EthInvestement(address investor, uint256 eth, uint256 datetime);
+    event ethWithdrawal(address withdrawal, uint amount);
     receive() external payable {
         emit Received(msg.sender, msg.value);
     }
@@ -61,7 +62,7 @@ contract KhuberoToken is ERC20, Pausable, Ownable {
 
     function mint() public payable {
         
-        require(msg.value>minInvestment, "Below Min Investment.");
+        require(msg.value>=minInvestment, "Below Min Investment.");
         require(address(this).balance+msg.value<=investmentCap, "Investment overflow");
         
         uint256 mintedKBR = ethToKBR(msg.value);
@@ -102,6 +103,7 @@ contract KhuberoToken is ERC20, Pausable, Ownable {
 
     function withdrawEth() external onlyOwner {
         payable(address(Treasury)).sendValue(address(this).balance);
+        emit ethWithdrawal(msg.sender, address(this).balance);
     }
 
     function resetInvestmentCap(uint256 _newCap) external onlyOwner {
