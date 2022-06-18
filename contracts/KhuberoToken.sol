@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import "./WadMath.sol";
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract KhuberoToken is ERC20, Pausable, Ownable {
 
