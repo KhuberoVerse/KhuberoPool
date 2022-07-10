@@ -62,16 +62,14 @@ contract Staking is Ownable, ReentrancyGuard {
 
     uint256 private constant _DECIMALS = 18;
 
-    uint256 private constant _INTEREST_PERIOD = 1 days;    //One Month
-    uint256 private constant _INTEREST_VALUE = 333;    //0.333% per day
+    uint256 private constant _INTEREST_PERIOD = 1 seconds;   
+    uint256 private constant _INTEREST_VALUE = 333;    //0.333% per period
 
-    uint256 private constant _MIN_STAKE_AMOUNT = 100 * (10**_DECIMALS);
+    uint256 private constant _MIN_STAKE_AMOUNT = 1 * (10**_DECIMALS);
 
-    uint256 private constant _MAX_STAKE_AMOUNT = 100000 * (10**_DECIMALS);
+    uint256 private constant _MAX_STAKE_AMOUNT = 100 * (10**_DECIMALS);
 
-    uint256 private constant _MAX_TOKEN_SUPPLY_LIMIT =     50000000 * (10**_DECIMALS);
-
-    uint256 private constant DIVISOR = 100000;
+    uint256 private constant DIVISOR = 100;
 
     uint256 public FINAL_REWARD_ETH_TO_WITHDRAW = 0;
     uint256 public FINAL_STAKED_TOKENS = 0;
@@ -128,6 +126,8 @@ contract Staking is Ownable, ReentrancyGuard {
 
         require(tokenAddress != address(0), "No contract set");
 
+        require(ALLOW_WITHDRAWAL==false, "Staking period over.");
+
         require(_amount >= _MIN_STAKE_AMOUNT, "Min stake limit is 100");
         require(_amount <= _MAX_STAKE_AMOUNT, "Max stake limit is 100000");
 
@@ -139,9 +139,11 @@ contract Staking is Ownable, ReentrancyGuard {
         newStake.deposit_amount = _amount;
         newStake.stake_creation_time = block.timestamp;
 
-        stake[staker].push(newStake);
+        if(stake[staker].length==0) {
+            activeAccounts.push(msg.sender);
+        }
 
-        activeAccounts.push(msg.sender);
+        stake[staker].push(newStake);
 
         if(ERC20Interface.transferFrom(msg.sender, address(this), _amount)){
             emit NewStake(staker, _amount);
@@ -151,8 +153,7 @@ contract Staking is Ownable, ReentrancyGuard {
     }
 
     function outputETHReward(uint deposited_amount) view public returns (uint outputEth) {
-        uint rewardTokens = deposited_amount.add(calculateTotalRewardToWithdraw(msg.sender));
-        outputEth = (rewardTokens.div(FINAL_STAKED_TOKENS)).mul(FINAL_REWARD_ETH_TO_WITHDRAW);
+        outputEth = (deposited_amount.mul(FINAL_REWARD_ETH_TO_WITHDRAW)).div(FINAL_STAKED_TOKENS);
     }
 
     // Withdraw reward in Ether
@@ -164,15 +165,15 @@ contract Staking is Ownable, ReentrancyGuard {
 
         uint outputEth = outputETHReward(deposited_amount);
 
-        if(outputEth <= address(this).balance) {
-            revert("ETH exhausted");
+        if(outputEth > address(this).balance) {
+            revert("Insufficient ETH");
         }
 
         if(outputEth>0) {
             require(removeTotalStakeAmount(), "removeTotalStakeAmount failed.");
-            require(getTotalStakeAmount()==0, "removeTotalStakeAmount failed.");
+            require(getTotalStakeAmount()==0, "getTotalStakeAmount==0");
             // Burn tokens
-            ERC20Interface.transfer(address(0), deposited_amount);
+            //ERC20Interface.transfer(address(0), deposited_amount);
             payable(address(msg.sender)).sendValue(outputEth);
             emit rewardWithdrawed(msg.sender, outputEth);
         } else {
@@ -219,10 +220,10 @@ contract Staking is Ownable, ReentrancyGuard {
     * @dev Remove all the caller's stake amount
     * @return bool
      */
-    function removeTotalStakeAmount() internal view returns (bool) {
+    function removeTotalStakeAmount() internal returns (bool) {
         require(tokenAddress != address(0), "No contract set");
 
-        Stake[] memory currentStake = stake[msg.sender];
+        Stake[] storage currentStake = stake[msg.sender];
         uint nummberOfStake = stake[msg.sender].length;
         for (uint i = 0; i<nummberOfStake; i++){
             currentStake[i].deposit_amount = 0;
@@ -238,18 +239,18 @@ contract Staking is Ownable, ReentrancyGuard {
     *
     *   @return 1) Amount Deposited
     *   @return 2) Stake creation time (Unix timestamp)
-    *   @return 3) The current amount
+    *   @return 3) The probable eth reward
     */
     function getStakeInfo(address account, uint _stakeID) external view returns(uint, uint, uint){
 
         Stake memory selectedStake = stake[account][_stakeID];
 
-        uint amountToWithdraw = calculateRewardTokens(account, _stakeID);
+        uint probableETHReward = outputETHReward(selectedStake.deposit_amount);
 
         return (
             selectedStake.deposit_amount,
             selectedStake.stake_creation_time,
-            amountToWithdraw
+            probableETHReward
         );
     }
 
@@ -271,46 +272,6 @@ contract Staking is Ownable, ReentrancyGuard {
             count = count + 1;
         }
         return count;
-    }
-
-    function calculateRewardTokens(address _account, uint _stakeID) public view returns (uint){
-        Stake memory _stake = stake[_account][_stakeID];
-
-        uint amount_staked = _stake.deposit_amount;
-     
-        uint periods = calculateAccountStakePeriods(_account, _stakeID);  //Periods for interest calculation
-
-        uint interest = amount_staked.mul(_INTEREST_VALUE);
-
-        uint reward = interest.mul(periods).div(DIVISOR);
-
-        return reward;
-    }
-
-    function calculateTotalRewardToWithdraw(address _account) public view returns (uint){
-        Stake[] memory accountStakes = stake[_account];
-
-        uint stakeNumber = accountStakes.length;
-        uint amount = 0;
-
-        for( uint i = 0; i<stakeNumber; i++){
-            amount = amount.add(calculateRewardTokens(_account, i));
-        }
-
-        return amount;
-    }
-
-    function calculateAccountStakePeriods(address _account, uint _stakeID) public view returns (uint){
-        Stake memory _stake = stake[_account][_stakeID];
-
-        uint creation_time = _stake.stake_creation_time;
-        uint current_time = block.timestamp;
-
-        uint total_period = current_time.sub(creation_time);
-
-        uint periods = total_period.div(_INTEREST_PERIOD);
-
-        return periods;
     }
     
     function getContractTokenBalance() external view returns (uint) {

@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import "./WadMath.sol";
-import "hardhat/console.sol";
 
 contract KhuberoToken is ERC20, Pausable, Ownable {
 
@@ -40,7 +39,7 @@ contract KhuberoToken is ERC20, Pausable, Ownable {
         minInvestment = _minInvestment;
         feePercentage = (WAD * _feePct) / 100;
 
-        _mint(msg.sender, 1000000 * 10 ** decimals());
+        //_mint(msg.sender, 1000000 * 10 ** decimals());
     }
 
     event Received(address, uint);
