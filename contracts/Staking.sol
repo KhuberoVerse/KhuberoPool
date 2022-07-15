@@ -62,9 +62,6 @@ contract Staking is Ownable, ReentrancyGuard {
 
     uint256 private constant _DECIMALS = 18;
 
-    uint256 private constant _INTEREST_PERIOD = 1 seconds;   
-    uint256 private constant _INTEREST_VALUE = 333;    //0.333% per period
-
     uint256 private constant _MIN_STAKE_AMOUNT = 1 * (10**_DECIMALS);
 
     uint256 private constant _MAX_STAKE_AMOUNT = 100 * (10**_DECIMALS);
