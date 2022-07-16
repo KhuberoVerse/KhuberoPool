@@ -28,8 +28,8 @@ contract KhuberoToken is ERC20, Pausable, Ownable, ReentrancyGuard {
     uint256 private ETHSupplied;    //Store the remaining token to be supplied
     address[] private stakeAccounts;   //Store both staker and referer address
     uint256 private constant _DECIMALS = 18;
-    uint256 private constant _MIN_STAKE_AMOUNT = 1 * (10**_DECIMALS);
-    uint256 private constant _MAX_STAKE_AMOUNT = 100 * (10**_DECIMALS);
+    uint256 private immutable _MIN_STAKE_AMOUNT;
+    uint256 private immutable _MAX_STAKE_AMOUNT;
     uint256 private constant DIVISOR = 100;
     uint256 public FINAL_REWARD_ETH_TO_WITHDRAW = 0;
     uint256 public FINAL_STAKED_TOKENS = 0;
@@ -52,13 +52,16 @@ contract KhuberoToken is ERC20, Pausable, Ownable, ReentrancyGuard {
         require(_treasury != address(0), "Invalid treasury address");
         require(_investmentCap>= 1 ether, "Min cap in 1 ether");
         require(_exchangeRate>= 1, "Invalid Exchange rate");
-        require(_minInvestment>= 1 ether, "Min investment is 1 ether");
+        require(_minInvestment>= 1000000 gwei, "Min investment is 1000000 gwei");
+        require(_minInvestment<=_investmentCap, "Min investment is gt Max investment");
         require(_feePct < 100, "fee>=100");
         Treasury = _treasury;
         investmentCap = _investmentCap;
         exchangeRate = _exchangeRate;
         minInvestment = _minInvestment;
         feePercentage = (WAD * _feePct) / 100;
+        _MIN_STAKE_AMOUNT = _minInvestment;
+        _MAX_STAKE_AMOUNT = investmentCap.wadDivDown(minInvestment);
     }
 
     event Received(address, uint);
@@ -133,11 +136,11 @@ contract KhuberoToken is ERC20, Pausable, Ownable, ReentrancyGuard {
         emit ethWithdrawal(msg.sender, address(this).balance);
     }
 
-    function resetInvestmentCap(uint256 _newCap) external onlyOwner {
-        require(address(this).balance == 0, "Eth > 0");
-        require(_newCap >= 1 ether && _newCap > address(this).balance, "cap error");
-        investmentCap = _newCap;
-    }
+    // function resetInvestmentCap(uint256 _newCap) external onlyOwner {
+    //     require(address(this).balance == 0, "Eth > 0");
+    //     require(_newCap >= 1 ether && _newCap > address(this).balance, "cap error");
+    //     investmentCap = _newCap;
+    // }
 
     function allowWithdrawal() external onlyOwner {
         require(ALLOW_WITHDRAWAL==false, "Withdraw already allowed");
@@ -160,8 +163,8 @@ contract KhuberoToken is ERC20, Pausable, Ownable, ReentrancyGuard {
 
         require(ALLOW_WITHDRAWAL==false, "Staking period over.");
 
-        require(_amount >= _MIN_STAKE_AMOUNT, "Min stake limit is 100");
-        require(_amount <= _MAX_STAKE_AMOUNT, "Max stake limit is 100000");
+        require(_amount >= _MIN_STAKE_AMOUNT, "Min stake limit error");
+        require(_amount <= _MAX_STAKE_AMOUNT, "Max stake limit error");
 
         address staker = msg.sender;
         Stake memory newStake;
@@ -267,16 +270,13 @@ contract KhuberoToken is ERC20, Pausable, Ownable, ReentrancyGuard {
     *   @return 2) Stake creation time (Unix timestamp)
     *   @return 3) The probable eth reward
     */
-    function getStakeInfo(address account, uint _stakeID) external view returns(uint, uint, uint){
+    function getStakeInfo(address account, uint _stakeID) external view returns(uint, uint){
 
         Stake memory selectedStake = stake[account][_stakeID];
 
-        uint probableETHReward = outputETHReward(selectedStake.deposit_amount);
-
         return (
             selectedStake.deposit_amount,
-            selectedStake.stake_creation_time,
-            probableETHReward
+            selectedStake.stake_creation_time
         );
     }
 
